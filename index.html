@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LCO-SM · Gestion du laboratoire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E2E30;
+    --panel:#153B3E;
+    --panel-2:#1B4649;
+    --panel-3:#204E51;
+    --line:rgba(237,244,240,0.12);
+    --line-strong:rgba(237,244,240,0.22);
+    --foam:#EDF4F0;
+    --foam-dim:rgba(237,244,240,0.60);
+    --foam-faint:rgba(237,244,240,0.38);
+    --coral:#E08A4E;
+    --coral-dim:rgba(224,138,78,0.16);
+    --alert:#D6634F;
+    --alert-dim:rgba(214,99,79,0.16);
+    --success:#7FB88F;
+    --success-dim:rgba(127,184,143,0.16);
+    --sea:#4A8C82;
+    --radius:10px;
+    --font-display:'Fraunces',serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--foam);font-family:var(--font-body);}
+  #app{min-height:100vh;position:relative;}
+  ::selection{background:var(--coral);color:#0E2E30;}
+  a{color:inherit;}
+  button{font-family:var(--font-body);cursor:pointer;}
+  input,select,textarea{font-family:var(--font-body);}
+
+  /* ---------- utility ---------- */
+  .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;}
+  .center-screen::before{
+    content:'';position:absolute;inset:0;
+    background-image:radial-gradient(rgba(237,244,240,0.05) 1px, transparent 1px);
+    background-size:22px 22px;
+    pointer-events:none;
+  }
+  .auth-card{position:relative;z-index:1;width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:36px 34px;box-shadow:0 30px 60px -20px rgba(0,0,0,0.5);}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--coral);margin:0 0 10px;}
+  .display-title{font-family:var(--font-display);font-weight:600;font-size:28px;line-height:1.15;margin:0 0 6px;letter-spacing:-0.01em;}
+  .sub{color:var(--foam-dim);font-size:14px;line-height:1.5;margin:0 0 26px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12px;color:var(--foam-dim);margin-bottom:6px;font-weight:500;}
+  .field input,.field select,.field textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--foam);
+    padding:11px 12px;border-radius:8px;font-size:14px;outline:none;transition:border-color .15s;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--coral);}
+  .field textarea{resize:vertical;min-height:80px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .btn{border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .1s, opacity .15s;}
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--coral);color:#12231F;width:100%;}
+  .btn-primary:hover{opacity:0.92;}
+  .btn-ghost{background:transparent;color:var(--foam-dim);border:1px solid var(--line);}
+  .btn-ghost:hover{color:var(--foam);border-color:var(--line-strong);}
+  .btn-danger{background:var(--alert-dim);color:var(--alert);border:1px solid transparent;}
+  .btn-danger:hover{background:var(--alert);color:#12231F;}
+  .btn-success{background:var(--success-dim);color:var(--success);}
+  .btn-success:hover{background:var(--success);color:#12231F;}
+  .btn-sm{padding:7px 12px;font-size:12.5px;border-radius:7px;}
+  .link-btn{background:none;border:none;color:var(--coral);font-size:13.5px;font-weight:600;padding:0;}
+  .switcher{display:flex;justify-content:center;gap:6px;margin-top:22px;font-size:13.5px;color:var(--foam-dim);}
+  .error-box{background:var(--alert-dim);color:#F3C9C1;border:1px solid rgba(214,99,79,0.35);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;}
+  .info-box{background:var(--success-dim);color:#CDEBD5;border:1px solid rgba(127,184,143,0.35);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;}
+  .fineprint{font-family:var(--font-mono);font-size:10.5px;color:var(--foam-faint);text-align:center;margin-top:22px;line-height:1.6;}
+
+  /* ---------- shell ---------- */
+  .shell{display:flex;min-height:100vh;}
+  .sidebar{width:242px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 14px;}
+  .brand{padding:6px 10px 22px;border-bottom:1px solid var(--line);margin-bottom:16px;}
+  .brand-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;color:var(--coral);text-transform:uppercase;}
+  .brand-name{font-family:var(--font-display);font-size:19px;font-weight:600;margin-top:4px;}
+  .nav-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:8px;font-size:14px;color:var(--foam-dim);margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-weight:500;}
+  .nav-item:hover{background:var(--panel-2);color:var(--foam);}
+  .nav-item.active{background:var(--coral-dim);color:var(--coral);}
+  .nav-badge{background:var(--alert);color:#12231F;font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 7px;font-family:var(--font-mono);}
+  .sidebar-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);}
+  .who{padding:8px 10px 12px;font-size:12.5px;color:var(--foam-faint);}
+  .who b{color:var(--foam-dim);font-weight:600;display:block;font-size:13.5px;}
+  .main{flex:1;min-width:0;padding:34px 40px;max-width:1180px;}
+  .page-head{margin-bottom:26px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  .page-title{font-family:var(--font-display);font-size:26px;font-weight:600;margin:0 0 4px;}
+  .page-sub{color:var(--foam-dim);font-size:13.5px;margin:0;}
+
+  /* ---------- cards / lists ---------- */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px;}
+  .card-title{font-family:var(--font-display);font-size:16px;font-weight:600;margin:0 0 4px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;}
+  .stat-num{font-family:var(--font-display);font-size:30px;font-weight:600;color:var(--coral);}
+  .stat-label{font-size:12px;color:var(--foam-dim);margin-top:2px;}
+  .list-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);}
+  .list-row:last-child{border-bottom:none;}
+  .avatar{width:34px;height:34px;border-radius:99px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:600;color:#12231F;flex-shrink:0;}
+  .flex-mid{display:flex;align-items:center;gap:12px;min-width:0;}
+  .name-txt{font-weight:600;font-size:14px;}
+  .sub-txt{font-size:12.5px;color:var(--foam-dim);}
+  .pill{font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.04em;padding:3px 9px;border-radius:99px;text-transform:uppercase;font-weight:600;}
+  .pill-pending{background:var(--coral-dim);color:var(--coral);}
+  .pill-active{background:var(--success-dim);color:var(--success);}
+  .pill-rejected{background:var(--alert-dim);color:var(--alert);}
+  .empty-state{padding:40px 20px;text-align:center;color:var(--foam-faint);font-size:13.5px;}
+  .btn-row{display:flex;gap:8px;flex-shrink:0;}
+
+  .chip-list{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:6px 8px 6px 12px;font-size:13px;}
+  .chip .dot{width:9px;height:9px;border-radius:99px;flex-shrink:0;}
+  .chip button{background:none;border:none;color:var(--foam-faint);font-size:14px;line-height:1;padding:2px;}
+  .chip button:hover{color:var(--alert);}
+  .add-inline{display:flex;gap:8px;margin-top:14px;}
+  .add-inline input{flex:1;}
+
+  /* ---------- schedule grid ---------- */
+  .sched-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--line);}
+  .sched-grid{display:grid;grid-template-columns:64px repeat(6,minmax(150px,1fr));gap:1px;min-width:1000px;}
+  .sched-cell{background:var(--panel);padding:6px;min-height:64px;}
+  .sched-head{background:var(--panel-3);padding:12px 8px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:0.05em;text-transform:uppercase;color:var(--foam-dim);text-align:center;font-weight:500;}
+  .sched-hour{background:var(--panel-3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;color:var(--foam-faint);}
+  .sched-cell.clickable{cursor:pointer;transition:background .1s;}
+  .sched-cell.clickable:hover{background:var(--panel-2);}
+  .entry-chip{background:var(--panel-2);border-left:3px solid var(--coral);border-radius:6px;padding:5px 7px;margin-bottom:4px;font-size:11.5px;line-height:1.35;cursor:pointer;}
+  .entry-chip:hover{background:var(--panel-3);}
+  .entry-chip .et-time{font-family:var(--font-mono);font-size:10px;color:var(--foam-faint);}
+  .entry-chip .et-name{font-weight:600;color:var(--foam);}
+  .entry-chip .et-who{color:var(--foam-dim);}
+  .plus-hint{color:var(--foam-faint);font-size:16px;text-align:center;opacity:0;transition:opacity .1s;}
+  .sched-cell.clickable:hover .plus-hint{opacity:1;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--foam-dim);}
+  .legend-dot{width:9px;height:9px;border-radius:99px;}
+
+  /* ---------- modal ---------- */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(6,17,18,0.65);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal-box{background:var(--panel);border:1px solid var(--line-strong);border-radius:16px;padding:28px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+  .modal-close{background:none;border:none;color:var(--foam-dim);font-size:20px;line-height:1;padding:2px 6px;}
+  .modal-close:hover{color:var(--foam);}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .modal-actions .btn{flex:1;}
+
+  .tabs-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;}
+  .day-block{margin-bottom:18px;}
+  .day-title{font-family:var(--font-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.08em;color:var(--coral);margin-bottom:8px;}
+
+  @media(max-width:880px){
+    .shell{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;overflow-x:auto;align-items:center;padding:12px;}
+    .brand{display:none;}
+    .sidebar-foot{margin-top:0;padding-top:0;border-top:none;margin-left:8px;}
+    .nav-item{white-space:nowrap;}
+    .main{padding:20px;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .row2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============================================================
+   LCO-SM · Outil de gestion des tâches du laboratoire
+   Stockage : localStorage (compatible avec l'API window.storage)
+   ============================================================ */
+
+// --- Implémentation de l'API window.storage avec localStorage ---
+window.storage = {
+  get: function(key, shared) {
+    return new Promise((resolve) => {
+      try {
+        const value = localStorage.getItem(key);
+        resolve(value ? { value } : null);
+      } catch(e) {
+        resolve(null);
+      }
+    });
+  },
+  set: function(key, value, shared) {
+    return new Promise((resolve) => {
+      try {
+        localStorage.setItem(key, value);
+        resolve({ success: true });
+      } catch(e) {
+        resolve(null);
+      }
+    });
+  },
+  delete: function(key, shared) {
+    return new Promise((resolve) => {
+      try {
+        localStorage.removeItem(key);
+        resolve({ success: true });
+      } catch(e) {
+        resolve(null);
+      }
+    });
+  }
+};
+
+const STORAGE_KEY = 'lco-sm-lab-data';
+const SESSION_KEY = 'lco-sm-session';
+
+const DAYS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const HOURS = [8,9,10,11,12,13,14,15]; // heures de début, plage 8h-16h
+
+const COLOR_PALETTE = ['#E08A4E','#7FA9B8','#B98CCB','#7FB88F','#9CB86F','#E0B24E','#6FA8C9','#D6634F','#C9A66F','#8FA6D6'];
+
+let state = {
+  data: null,
+  session: null,
+  view: 'loading',
+  adminTab: 'overview',
+  memberTab: 'mytasks',
+  modal: null,
+  errorMsg: '',
+};
+
+function uid(prefix){
+  return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+function esc(str){
+  if(str===undefined || str===null) return '';
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function colorFor(idx){ return COLOR_PALETTE[idx % COLOR_PALETTE.length]; }
+function initials(name){
+  if(!name) return '?';
+  return name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+}
+function fmtDate(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
+  }catch(e){ return iso; }
+}
+function fmtDateTime(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'short'}) + ' · ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  }catch(e){ return iso; }
+}
+
+/* ---------------- storage ---------------- */
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    if(!res) return null;
+    return JSON.parse(res.value);
+  }catch(e){
+    return null;
+  }
+}
+async function saveData(){
+  try{
+    const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state.data), true);
+    if(!res){ console.error('Échec de sauvegarde (résultat nul)'); }
+  }catch(e){
+    console.error('Erreur de sauvegarde', e);
+    alert("Une erreur est survenue lors de l'enregistrement. Vérifiez la connexion et réessayez.");
+  }
+}
+async function loadSession(){
+  try{
+    const res = await window.storage.get(SESSION_KEY, false);
+    if(!res) return null;
+    return JSON.parse(res.value);
+  }catch(e){ return null; }
+}
+async function saveSession(session){
+  try{
+    if(session){
+      await window.storage.set(SESSION_KEY, JSON.stringify(session), false);
+    }else{
+      await window.storage.delete(SESSION_KEY, false);
+    }
+  }catch(e){ /* clé absente au premier lancement, sans conséquence */ }
+}
+
+function defaultData(admin){
+  return {
+    admin: admin,
+    members: [],
+    taskTypes: [
+      {id:'analyses', name:'Analyses', color:COLOR_PALETTE[0]},
+      {id:'biblio', name:'Recherche bibliographique', color:COLOR_PALETTE[1]},
+      {id:'supervision', name:'Supervision & accompagnement', color:COLOR_PALETTE[2]},
+      {id:'menage', name:'Ménage', color:COLOR_PALETTE[3]},
+      {id:'jardin', name:'Entretien jardin & extérieur', color:COLOR_PALETTE[4]},
+      {id:'cuisine', name:'Cuisine', color:COLOR_PALETTE[5]},
+      {id:'vaisselle', name:'Vaisselle', color:COLOR_PALETTE[6]},
+      {id:'materiel', name:'Utilisation matériel labo', color:COLOR_PALETTE[7]},
+    ],
+    equipment: ['Rotavapor','HPLC','CCM / Plaques TLC','Spectrophotomètre UV-Vis','Étuve','Balance analytique'],
+    entries: [],
+    announcements: [],
+    events: [],
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/* ---------------- init ---------------- */
+async function init(){
+  state.data = await loadData();
+  if(!state.data){
+    state.view = 'setup';
+    render();
+    return;
+  }
+  const session = await loadSession();
+  if(session && session.role === 'admin'){
+    state.session = session; state.view = 'admin'; state.adminTab = 'overview';
+    render(); return;
+  }
+  if(session && session.role === 'member'){
+    const m = state.data.members.find(x => x.id === session.memberId);
+    if(m && m.status === 'active'){
+      state.session = session; state.view = 'member'; state.memberTab = 'mytasks';
+      render(); return;
+    }else if(m && m.status === 'pending'){
+      state.session = session; state.view = 'pending'; render(); return;
+    }else if(m && m.status === 'rejected'){
+      state.session = session; state.view = 'rejected'; render(); return;
+    }
+  }
+  state.view = 'login';
+  render();
+}
+
+/* ---------------- render dispatcher ---------------- */
+function render(){
+  const app = document.getElementById('app');
+  if(state.view==='loading'){ app.innerHTML = screenLoading(); return; }
+  if(state.view==='setup'){ app.innerHTML = screenSetup(); bindSetup(); return; }
+  if(state.view==='login'){ app.innerHTML = screenLogin(); bindLogin(); return; }
+  if(state.view==='register'){ app.innerHTML = screenRegister(); bindRegister(); return; }
+  if(state.view==='pending'){ app.innerHTML = screenPending(); bindPending(); return; }
+  if(state.view==='rejected'){ app.innerHTML = screenRejected(); bindPending(); return; }
+  if(state.view==='admin'){ app.innerHTML = shellAdmin(); bindShellCommon(); bindAdminTab(); renderModal(); return; }
+  if(state.view==='member'){ app.innerHTML = shellMember(); bindShellCommon(); bindMemberTab(); renderModal(); return; }
+}
+
+/* ================= LOADING ================= */
+function screenLoading(){
+  return `<div class="center-screen"><p style="color:var(--foam-dim);font-family:var(--font-mono);font-size:13px;">Chargement…</p></div>`;
+}
+
+/* ================= SETUP (premier lancement) ================= */
+function screenSetup(){
+  return `
+  <div class="center-screen">
+    <div class="auth-card">
+      <p class="eyebrow">Premier lancement</p>
+      <h1 class="display-title">Configurer le compte administrateur</h1>
+      <p class="sub">Aucune donnée n'existe encore pour ce laboratoire. La première personne à ouvrir cet outil doit créer le compte administrateur — c'est vous. Vous pourrez transférer ce rôle à une autre adresse plus tard, dans les Paramètres.</p>
+      ${state.errorMsg ? `<div class="error-box">${esc(state.errorMsg)}</div>` : ''}
+      <form id="setup-form">
+        <div class="field"><label>Votre nom</label><input type="text" id="s-name" placeholder="ex. Rina Ratsimbazafy" required></div>
+        <div class="field"><label>Adresse e-mail (identifiant admin)</label><input type="email" id="s-email" placeholder="admin@lco-sm.mg" required></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="s-pass" minlength="4" required></div>
+        <div class="field"><label>Confirmer le mot de passe</label><input type="password" id="s-pass2" minlength="4" required></div>
+        <button type="submit" class="btn btn-primary">Créer le compte administrateur</button>
+      </form>
+      <p class="fineprint">⚠️ Contrôle d'accès simple à usage interne — les identifiants sont stockés tels quels dans le stockage partagé de l'outil. N'utilisez pas un mot de passe employé ailleurs.</p>
+    </div>
+  </div>`;
+}
+function bindSetup(){
+  document.getElementById('setup-form').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('s-name').value.trim();
+    const email = document.getElementById('s-email').value.trim().toLowerCase();
+    const pass = document.getElementById('s-pass').value;
+    const pass2 = document.getElementById('s-pass2').value;
+    if(pass !== pass2){ state.errorMsg = 'Les mots de passe ne correspondent pas.'; render(); return; }
+    state.data = defaultData({name, email, password: pass});
+    await saveData();
+    state.session = {role:'admin'};
+    await saveSession(state.session);
+    state.errorMsg = '';
+    state.view = 'admin'; state.adminTab = 'overview';
+    render();
+  });
+}
+
+/* ================= LOGIN ================= */
+function screenLogin(){
+  return `
+  <div class="center-screen">
+    <div class="auth-card">
+      <p class="eyebrow">LCO-SM · Laboratoire de Chimie Organique</p>
+      <h1 class="display-title">Se connecter</h1>
+      <p class="sub">Gestion des tâches, du planning et des membres du laboratoire.</p>
+      ${state.errorMsg ? `<div class="error-box">${esc(state.errorMsg)}</div>` : ''}
+      <form id="login-form">
+        <div class="field"><label>E-mail</label><input type="email" id="l-email" required></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="l-pass" required></div>
+        <button type="submit" class="btn btn-primary">Entrer</button>
+      </form>
+      <div class="switcher">
+        Pas encore de profil ?
+        <button class="link-btn" id="go-register">Créer un profil</button>
+      </div>
+      <p class="fineprint">Les nouveaux profils doivent être validés par l'administrateur avant l'accès au tableau de bord.</p>
+    </div>
+  </div>`;
+}
+function bindLogin(){
+  document.getElementById('login-form').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const email = document.getElementById('l-email').value.trim().toLowerCase();
+    const pass = document.getElementById('l-pass').value;
+    const d = state.data;
+    if(d.admin.email.toLowerCase() === email && d.admin.password === pass){
+      state.session = {role:'admin'};
+      await saveSession(state.session);
+      state.errorMsg=''; state.view='admin'; state.adminTab='overview'; render(); return;
+    }
+    const m = d.members.find(x => x.email.toLowerCase() === email && x.password === pass);
+    if(m){
+      state.session = {role:'member', memberId:m.id};
+      await saveSession(state.session);
+      state.errorMsg='';
+      if(m.status==='active'){ state.view='member'; state.memberTab='mytasks'; }
+      else if(m.status==='pending'){ state.view='pending'; }
+      else { state.view='rejected'; }
+      render(); return;
+    }
+    state.errorMsg = 'Identifiants incorrects. Vérifiez votre e-mail et mot de passe.';
+    render();
+  });
+  document.getElementById('go-register').addEventListener('click', ()=>{
+    state.errorMsg=''; state.view='register'; render();
+  });
+}
+
+/* ================= REGISTER ================= */
+function screenRegister(){
+  return `
+  <div class="center-screen">
+    <div class="auth-card">
+      <p class="eyebrow">Nouveau profil</p>
+      <h1 class="display-title">Créer votre profil</h1>
+      <p class="sub">Votre profil sera visible par l'administrateur pour validation. Vous pourrez suivre vos tâches dès qu'il sera approuvé.</p>
+      ${state.errorMsg ? `<div class="error-box">${esc(state.errorMsg)}</div>` : ''}
+      <form id="register-form">
+        <div class="field"><label>Nom complet</label><input type="text" id="r-name" required></div>
+        <div class="field"><label>E-mail</label><input type="email" id="r-email" required></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="r-pass" minlength="4" required></div>
+        <div class="field"><label>Confirmer le mot de passe</label><input type="password" id="r-pass2" minlength="4" required></div>
+        <button type="submit" class="btn btn-primary">Envoyer ma demande</button>
+      </form>
+      <div class="switcher">
+        Déjà un profil ?
+        <button class="link-btn" id="go-login">Se connecter</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindRegister(){
+  document.getElementById('register-form').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('r-name').value.trim();
+    const email = document.getElementById('r-email').value.trim().toLowerCase();
+    const pass = document.getElementById('r-pass').value;
+    const pass2 = document.getElementById('r-pass2').value;
+    if(pass !== pass2){ state.errorMsg='Les mots de passe ne correspondent pas.'; render(); return; }
+    const d = state.data;
+    if(d.admin.email.toLowerCase()===email || d.members.some(m=>m.email.toLowerCase()===email)){
+      state.errorMsg = 'Cette adresse e-mail est déjà utilisée.'; render(); return;
+    }
+    const newMember = {id:uid('mem'), name, email, password:pass, status:'pending', createdAt:new Date().toISOString()};
+    d.members.push(newMember);
+    await saveData();
+    state.session = {role:'member', memberId:newMember.id};
+    await saveSession(state.session);
+    state.errorMsg='';
+    state.view='pending'; render();
+  });
+  document.getElementById('go-login').addEventListener('click', ()=>{ state.errorMsg=''; state.view='login'; render(); });
+}
+
+/* ================= PENDING / REJECTED ================= */
+function screenPending(){
+  const m = state.data.members.find(x=>x.id===state.session.memberId);
+  return `
+  <div class="center-screen">
+    <div class="auth-card" style="text-align:center;">
+      <p class="eyebrow">En attente</p>
+      <h1 class="display-title">Demande envoyée</h1>
+      <p class="sub">Bonjour ${esc(m?m.name:'')}, votre profil est en attente de validation par l'administrateur du laboratoire. Revenez plus tard ou contactez l'admin directement.</p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" id="p-refresh" style="flex:1;">Actualiser</button>
+        <button class="btn btn-danger" id="p-logout" style="flex:1;">Se déconnecter</button>
+      </div>
+    </div>
+  </div>`;
+}
+function screenRejected(){
+  return `
+  <div class="center-screen">
+    <div class="auth-card" style="text-align:center;">
+      <p class="eyebrow">Demande non retenue</p>
+      <h1 class="display-title">Profil non validé</h1>
+      <p class="sub">Votre demande d'accès n'a pas été approuvée par l'administrateur. Contactez-le pour plus d'informations.</p>
+      <button class="btn btn-danger" id="p-logout" style="width:100%;">Se déconnecter</button>
+    </div>
+  </div>`;
+}
+function bindPending(){
+  const lo = document.getElementById('p-logout');
+  if(lo) lo.addEventListener('click', async ()=>{ state.session=null; await saveSession(null); state.view='login'; render(); });
+  const rf = document.getElementById('p-refresh');
+  if(rf) rf.addEventListener('click', async ()=>{
+    state.data = await loadData();
+    const m = state.data.members.find(x=>x.id===state.session.memberId);
+    if(m && m.status==='active'){ state.view='member'; state.memberTab='mytasks'; }
+    else if(m && m.status==='rejected'){ state.view='rejected'; }
+    render();
+  });
+}
+
+/* ================= SHELL: ADMIN ================= */
+function shellAdmin(){
+  const d = state.data;
+  const pendingCount = d.members.filter(m=>m.status==='pending').length;
+  const tabs = [
+    ['overview','Vue d\'ensemble'],
+    ['members','Membres', pendingCount],
+    ['planning','Planning'],
+    ['tasktypes','Types de tâches'],
+    ['equipment','Matériel'],
+    ['announcements','Annonces'],
+    ['events','Événements'],
+    ['settings','Paramètres'],
+  ];
+  return `
+  <div class="shell">
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-eyebrow">LCO-SM</div>
+        <div class="brand-name">Labo · Admin</div>
+      </div>
+      ${tabs.map(t=>`
+        <button class="nav-item ${state.adminTab===t[0]?'active':''}" data-tab="${t[0]}">
+          <span>${t[1]}</span>
+          ${t[2] ? `<span class="nav-badge">${t[2]}</span>` : ''}
+        </button>`).join('')}
+      <div class="sidebar-foot">
+        <div class="who"><b>${esc(d.admin.name)}</b>${esc(d.admin.email)}</div>
+        <button class="btn btn-ghost btn-sm" id="logout-btn" style="width:100%;">Se déconnecter</button>
+      </div>
+    </div>
+    <div class="main" id="main-content"></div>
+  </div>`;
+}
+
+/* ================= SHELL: MEMBER ================= */
+function shellMember(){
+  const m = state.data.members.find(x=>x.id===state.session.memberId);
+  const tabs = [
+    ['mytasks','Mes tâches'],
+    ['planning','Planning complet'],
+    ['announcements','Annonces'],
+    ['events','Événements'],
+    ['profile','Mon profil'],
+  ];
+  return `
+  <div class="shell">
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-eyebrow">LCO-SM</div>
+        <div class="brand-name">Labo · Membre</div>
+      </div>
+      ${tabs.map(t=>`
+        <button class="nav-item ${state.memberTab===t[0]?'active':''}" data-tab="${t[0]}">
+          <span>${t[1]}</span>
+        </button>`).join('')}
+      <div class="sidebar-foot">
+        <div class="who"><b>${esc(m?m.name:'')}</b>${esc(m?m.email:'')}</div>
+        <button class="btn btn-ghost btn-sm" id="logout-btn" style="width:100%;">Se déconnecter</button>
+      </div>
+    </div>
+    <div class="main" id="main-content"></div>
+  </div>`;
+}
+
+function bindShellCommon(){
+  document.querySelectorAll('.nav-item').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(state.view==='admin') state.adminTab = btn.dataset.tab;
+      else state.memberTab = btn.dataset.tab;
+      render();
+    });
+  });
+  const logoutBtn = document.getElementById('logout-btn');
+  if(logoutBtn) {
+    logoutBtn.addEventListener('click', async ()=>{
+      state.session=null; await saveSession(null); state.view='login'; state.errorMsg=''; render();
+    });
+  }
+}
+
+/* ================= ADMIN TABS ================= */
+function bindAdminTab(){
+  const el = document.getElementById('main-content');
+  if(!el) return;
+  const tab = state.adminTab;
+  if(tab==='overview') el.innerHTML = adminOverview();
+  if(tab==='members'){ el.innerHTML = adminMembers(); bindAdminMembers(); }
+  if(tab==='planning'){ el.innerHTML = adminPlanning(); bindPlanning(true); }
+  if(tab==='tasktypes'){ el.innerHTML = adminTaskTypes(); bindTaskTypes(); }
+  if(tab==='equipment'){ el.innerHTML = adminEquipment(); bindEquipment(); }
+  if(tab==='announcements'){ el.innerHTML = adminAnnouncements(); bindAnnouncements(true); }
+  if(tab==='events'){ el.innerHTML = adminEvents(); bindEvents(true); }
+  if(tab==='settings'){ el.innerHTML = adminSettings(); bindSettings(); }
+}
+
+function adminOverview(){
+  const d = state.data;
+  const active = d.members.filter(m=>m.status==='active');
+  const pending = d.members.filter(m=>m.status==='pending');
+  const now = new Date();
+  const upcoming = d.events.filter(ev=> new Date(ev.date) >= new Date(now.toDateString())).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const nextEvent = upcoming[0];
+  return `
+  <div class="page-head">
+    <div><p class="page-title">Vue d'ensemble</p><p class="page-sub">Aperçu du laboratoire au ${fmtDate(now.toISOString())}</p></div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">Membres actifs</div></div>
+    <div class="stat-card"><div class="stat-num">${pending.length}</div><div class="stat-label">Demandes en attente</div></div>
+    <div class="stat-card"><div class="stat-num">${d.entries.length}</div><div class="stat-label">Créneaux planifiés / semaine</div></div>
+    <div class="stat-card"><div class="stat-num">${d.announcements.length}</div><div class="stat-label">Annonces publiées</div></div>
+  </div>
+  <div class="card">
+    <p class="card-title">Prochain événement</p>
+    ${nextEvent ? `
+      <div class="list-row" style="border:none;padding-top:8px;">
+        <div><div class="name-txt">${esc(nextEvent.title)}</div><div class="sub-txt">${fmtDate(nextEvent.date)}${nextEvent.time?' · '+esc(nextEvent.time):''}${nextEvent.location?' · '+esc(nextEvent.location):''}</div></div>
+      </div>` : `<div class="empty-state">Aucun événement programmé pour le moment.</div>`}
+  </div>
+  <div class="card">
+    <p class="card-title">Demandes de profil en attente</p>
+    ${pending.length===0 ? `<div class="empty-state">Aucune demande en attente.</div>` :
+      pending.map(m=>`
+      <div class="list-row">
+        <div class="flex-mid">
+          <div class="avatar" style="background:${colorFor(d.members.indexOf(m))}">${initials(m.name)}</div>
+          <div><div class="name-txt">${esc(m.name)}</div><div class="sub-txt">${esc(m.email)}</div></div>
+        </div>
+        <span class="pill pill-pending">En attente</span>
+      </div>`).join('')}
+    ${pending.length ? `<p class="sub-txt" style="margin-top:10px;">Gérez ces demandes dans l'onglet Membres.</p>` : ''}
+  </div>`;
+}
+
+/* ---- Membres ---- */
+function adminMembers(){
+  const d = state.data;
+  const pending = d.members.filter(m=>m.status==='pending');
+  const active = d.members.filter(m=>m.status==='active');
+  const rejected = d.members.filter(m=>m.status==='rejected');
+  return `
+  <div class="page-head"><div><p class="page-title">Membres</p><p class="page-sub">Validez les nouvelles demandes et gérez les profils du laboratoire.</p></div></div>
+  <div class="card">
+    <p class="card-title">Demandes en attente (${pending.length})</p>
+    ${pending.length===0 ? `<div class="empty-state">Aucune demande en attente.</div>` : pending.map(m=>`
+      <div class="list-row">
+        <div class="flex-mid">
+          <div class="avatar" style="background:${colorFor(d.members.indexOf(m))}">${initials(m.name)}</div>
+          <div><div class="name-txt">${esc(m.name)}</div><div class="sub-txt">${esc(m.email)} · demandé le ${fmtDate(m.createdAt)}</div></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-success btn-sm" data-approve="${m.id}">Approuver</button>
+          <button class="btn btn-danger btn-sm" data-reject="${m.id}">Refuser</button>
+        </div>
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <p class="card-title">Membres actifs (${active.length})</p>
+    ${active.length===0 ? `<div class="empty-state">Aucun membre actif pour le moment.</div>` : active.map(m=>`
+      <div class="list-row">
+        <div class="flex-mid">
+          <div class="avatar" style="background:${colorFor(d.members.indexOf(m))}">${initials(m.name)}</div>
+          <div><div class="name-txt">${esc(m.name)}</div><div class="sub-txt">${esc(m.email)}</div></div>
+        </div>
+        <div class="btn-row">
+          <span class="pill pill-active">Actif</span>
+          <button class="btn btn-danger btn-sm" data-remove="${m.id}">Retirer</button>
+        </div>
+      </div>`).join('')}
+  </div>
+  ${rejected.length ? `
+  <div class="card">
+    <p class="card-title">Demandes refusées (${rejected.length})</p>
+    ${rejected.map(m=>`
+      <div class="list-row">
+        <div class="flex-mid">
+          <div class="avatar" style="background:${colorFor(d.members.indexOf(m))}">${initials(m.name)}</div>
+          <div><div class="name-txt">${esc(m.name)}</div><div class="sub-txt">${esc(m.email)}</div></div>
+        </div>
+        <div class="btn-row">
+          <span class="pill pill-rejected">Refusé</span>
+          <button class="btn btn-ghost btn-sm" data-remove="${m.id}">Supprimer</button>
+        </div>
+      </div>`).join('')}
+  </div>` : ''}`;
+}
+function bindAdminMembers(){
+  document.querySelectorAll('[data-approve]').forEach(b=>b.addEventListener('click', async ()=>{
+    const m = state.data.members.find(x=>x.id===b.dataset.approve);
+    if(m){ m.status='active'; await saveData(); render(); }
+  }));
+  document.querySelectorAll('[data-reject]').forEach(b=>b.addEventListener('click', async ()=>{
+    const m = state.data.members.find(x=>x.id===b.dataset.reject);
+    if(m && confirm(`Refuser la demande de ${m.name} ?`)){ m.status='rejected'; await saveData(); render(); }
+  }));
+  document.querySelectorAll('[data-remove]').forEach(b=>b.addEventListener('click', async ()=>{
+    const m = state.data.members.find(x=>x.id===b.dataset.remove);
+    if(m && confirm(`Supprimer définitivement le profil de ${m.name} ? Ses créneaux planifiés seront aussi supprimés.`)){
+      state.data.members = state.data.members.filter(x=>x.id!==m.id);
+      state.data.entries = state.data.entries.filter(en=>en.memberId!==m.id);
+      await saveData(); render();
+    }
+  }));
+}
+
+/* ---- Types de tâches ---- */
+function adminTaskTypes(){
+  const d = state.data;
+  return `
+  <div class="page-head"><div><p class="page-title">Types de tâches</p><p class="page-sub">La liste utilisée pour planifier les créneaux de chacun. Modifiable à tout moment.</p></div></div>
+  <div class="card">
+    <div class="chip-list">
+      ${d.taskTypes.map(t=>`
+        <div class="chip"><span class="dot" style="background:${t.color}"></span>${esc(t.name)}<button data-del-tt="${t.id}" title="Supprimer">✕</button></div>
+      `).join('')}
+    </div>
+    <div class="add-inline">
+      <input type="text" id="new-tt" placeholder="Nouveau type de tâche, ex. Formation stagiaire">
+      <button class="btn btn-primary btn-sm" id="add-tt">Ajouter</button>
+    </div>
+  </div>`;
+}
+function bindTaskTypes(){
+  const addBtn = document.getElementById('add-tt');
+  if(addBtn) {
+    addBtn.addEventListener('click', async ()=>{
+      const input = document.getElementById('new-tt');
+      const name = input.value.trim();
+      if(!name) return;
+      state.data.taskTypes.push({id:uid('tt'), name, color: colorFor(state.data.taskTypes.length)});
+      await saveData(); render();
+    });
+  }
+  document.querySelectorAll('[data-del-tt]').forEach(b=>b.addEventListener('click', async ()=>{
+    const inUse = state.data.entries.some(e=>e.taskTypeId===b.dataset.delTt);
+    if(inUse && !confirm('Ce type de tâche est utilisé dans le planning. Le supprimer retirera aussi ces créneaux. Continuer ?')) return;
+    state.data.taskTypes = state.data.taskTypes.filter(t=>t.id!==b.dataset.delTt);
+    state.data.entries = state.data.entries.filter(e=>e.taskTypeId!==b.dataset.delTt);
+    await saveData(); render();
+  }));
+}
+
+/* ---- Matériel ---- */
+function adminEquipment(){
+  const d = state.data;
+  return `
+  <div class="page-head"><div><p class="page-title">Matériel du laboratoire</p><p class="page-sub">Liste des équipements réservables dans le planning (catégorie "Utilisation matériel labo").</p></div></div>
+  <div class="card">
+    <div class="chip-list">
+      ${d.equipment.map((eq,i)=>`
+        <div class="chip"><span class="dot" style="background:${colorFor(i)}"></span>${esc(eq)}<button data-del-eq="${i}" title="Supprimer">✕</button></div>
+      `).join('')}
+    </div>
+    <div class="add-inline">
+      <input type="text" id="new-eq" placeholder="Nouvel équipement, ex. Lyophilisateur">
+      <button class="btn btn-primary btn-sm" id="add-eq">Ajouter</button>
+    </div>
+  </div>`;
+}
+function bindEquipment(){
+  const addBtn = document.getElementById('add-eq');
+  if(addBtn) {
+    addBtn.addEventListener('click', async ()=>{
+      const input = document.getElementById('new-eq');
+      const name = input.value.trim();
+      if(!name) return;
+      state.data.equipment.push(name);
+      await saveData(); render();
+    });
+  }
+  document.querySelectorAll('[data-del-eq]').forEach(b=>b.addEventListener('click', async ()=>{
+    state.data.equipment.splice(parseInt(b.dataset.delEq),1);
+    await saveData(); render();
+  }));
+}
+
+/* ---- Planning (admin: editable / member: read-only) ---- */
+function scheduleGrid(editable){
+  const d = state.data;
+  let html = `<div class="sched-wrap"><div class="sched-grid">`;
+  html += `<div class="sched-head"></div>`;
+  DAYS.forEach(day => html += `<div class="sched-head">${day}</div>`);
+  HOURS.forEach(h => {
+    html += `<div class="sched-hour">${h}h</div>`;
+    DAYS.forEach(day => {
+      const entries = d.entries.filter(e => e.day===day && e.startHour===h);
+      html += `<div class="sched-cell ${editable?'clickable':''}" ${editable?`data-add-cell="${day}|${h}"`:''}>`;
+      entries.forEach(e=>{
+        const tt = d.taskTypes.find(t=>t.id===e.taskTypeId);
+        const mem = d.members.find(m=>m.id===e.memberId);
+        html += `<div class="entry-chip" style="border-left-color:${tt?tt.color:'#E08A4E'}" ${editable?`data-edit-entry="${e.id}"`:''}>
+          <div class="et-time">${e.startHour}h–${e.endHour}h</div>
+          <div class="et-name">${esc(tt?tt.name:'—')}${e.equipmentName?' · '+esc(e.equipmentName):''}</div>
+          <div class="et-who">${esc(mem?mem.name:'?')}</div>
+        </div>`;
+      });
+      if(editable && entries.length===0) html += `<div class="plus-hint">+</div>`;
+      html += `</div>`;
+    });
+  });
+  html += `</div></div>`;
+  return html;
+}
+function scheduleLegend(){
+  const d = state.data;
+  return `<div class="legend">${d.taskTypes.map(t=>`<div class="legend-item"><span class="legend-dot" style="background:${t.color}"></span>${esc(t.name)}</div>`).join('')}</div>`;
+}
+function adminPlanning(){
+  return `
+  <div class="page-head"><div><p class="page-title">Planning hebdomadaire</p><p class="page-sub">Lundi à samedi, 8h–16h. Cliquez sur une case vide pour ajouter un créneau, ou sur un créneau existant pour le modifier.</p></div></div>
+  ${scheduleGrid(true)}
+  ${scheduleLegend()}`;
+}
+function bindPlanning(editable){
+  if(!editable) return;
+  document.querySelectorAll('[data-add-cell]').forEach(c=>c.addEventListener('click', (ev)=>{
+    if(ev.target.closest('[data-edit-entry]')) return;
+    const [day,h] = c.dataset.addCell.split('|');
+    openEntryModal({day, startHour:parseInt(h)});
+  }));
+  document.querySelectorAll('[data-edit-entry]').forEach(c=>c.addEventListener('click', (ev)=>{
+    ev.stopPropagation();
+    openEntryModal({editId:c.dataset.editEntry});
+  }));
+}
+
+function openEntryModal({day, startHour, editId}={}){
+  const d = state.data;
+  const active = d.members.filter(m=>m.status==='active');
+  if(active.length===0){ alert("Aucun membre actif pour l'instant. Validez au moins un profil avant de planifier."); return; }
+  let entry = editId ? d.entries.find(e=>e.id===editId) : null;
+  state.modal = {
+    type:'entry',
+    day: entry ? entry.day : day,
+    startHour: entry ? entry.startHour : startHour,
+    isEdit: !!entry,
+    editId: editId || null,
+    memberId: entry ? entry.memberId : active[0].id,
+    taskTypeId: entry ? entry.taskTypeId : d.taskTypes[0].id,
+    endHour: entry ? entry.endHour : Math.min((startHour||8)+1,16),
+    equipmentName: entry ? (entry.equipmentName||'') : (d.equipment[0]||''),
+    note: entry ? (entry.note||'') : '',
+  };
+  render();
+}
+
+function renderModal(){
+  const app = document.getElementById('app');
+  // Supprimer les modaux existants
+  const existingModal = app.querySelector('.modal-backdrop');
+  if(existingModal) existingModal.remove();
+  
+  if(!state.modal) return;
+  const m = state.modal;
+  const d = state.data;
+  const active = d.members.filter(x=>x.status==='active');
+  const showEquipment = m.taskTypeId === 'materiel' || (d.taskTypes.find(t=>t.id===m.taskTypeId)||{}).name==='Utilisation matériel labo';
+  const box = document.createElement('div');
+  box.className = 'modal-backdrop';
+  box.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">${m.day} · ${m.startHour}h</p>
+          <h2 class="display-title" style="font-size:20px;">${m.isEdit?'Modifier le créneau':'Ajouter un créneau'}</h2>
+        </div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="field">
+        <label>Membre</label>
+        <select id="m-member">${active.map(mm=>`<option value="${mm.id}" ${mm.id===m.memberId?'selected':''}>${esc(mm.name)}</option>`).join('')}</select>
+      </div>
+      <div class="field">
+        <label>Type de tâche</label>
+        <select id="m-tasktype">${d.taskTypes.map(t=>`<option value="${t.id}" ${t.id===m.taskTypeId?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+      </div>
+      <div id="m-equipment-wrap" class="field" style="display:${showEquipment?'block':'none'};">
+        <label>Équipement</label>
+        <select id="m-equipment">${d.equipment.map(eq=>`<option value="${esc(eq)}" ${eq===m.equipmentName?'selected':''}>${esc(eq)}</option>`).join('')}</select>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Heure de début</label>
+          <select id="m-start">${HOURS.map(h=>`<option value="${h}" ${h===m.startHour?'selected':''}>${h}h</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Heure de fin</label>
+          <select id="m-end">${[9,10,11,12,13,14,15,16].map(h=>`<option value="${h}" ${h===m.endHour?'selected':''}>${h}h</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="field"><label>Note (optionnel)</label><textarea id="m-note" placeholder="Précisions sur la tâche...">${esc(m.note)}</textarea></div>
+      <div class="modal-actions">
+        ${m.isEdit ? `<button class="btn btn-danger" id="m-delete">Supprimer</button>` : ''}
+        <button class="btn btn-primary" id="m-save">${m.isEdit?'Enregistrer':'Ajouter'}</button>
+      </div>
+    </div>`;
+  app.appendChild(box);
+
+  const closeBtn = document.getElementById('modal-close');
+  if(closeBtn) closeBtn.addEventListener('click', closeModal);
+  box.addEventListener('click', (e)=>{ if(e.target===box) closeModal(); });
+  
+  const taskTypeSelect = document.getElementById('m-tasktype');
+  if(taskTypeSelect) {
+    taskTypeSelect.addEventListener('change', (e)=>{
+      m.taskTypeId = e.target.value;
+      render();
+    });
+  }
+  
+  const saveBtn = document.getElementById('m-save');
+  if(saveBtn) {
+    saveBtn.addEventListener('click', async ()=>{
+      const memberId = document.getElementById('m-member').value;
+      const taskTypeId = document.getElementById('m-tasktype').value;
+      const startHour = parseInt(document.getElementById('m-start').value);
+      const endHour = parseInt(document.getElementById('m-end').value);
+      const note = document.getElementById('m-note').value.trim();
+      const equipmentWrap = document.getElementById('m-equipment-wrap');
+      const equipmentName = equipmentWrap && equipmentWrap.style.display!=='none'
+        ? document.getElementById('m-equipment').value : '';
+      if(endHour <= startHour){ alert("L'heure de fin doit être après l'heure de début."); return; }
+      if(m.isEdit){
+        const en = state.data.entries.find(e=>e.id===m.editId);
+        if(en) {
+          Object.assign(en, {memberId, taskTypeId, startHour, endHour, note, equipmentName, day:m.day});
+        }
+      }else{
+        state.data.entries.push({id:uid('en'), day:m.day, memberId, taskTypeId, startHour, endHour, note, equipmentName});
+      }
+      await saveData();
+      closeModal();
+    });
+  }
+  const delBtn = document.getElementById('m-delete');
+  if(delBtn) {
+    delBtn.addEventListener('click', async ()=>{
+      if(confirm('Supprimer ce créneau ?')){
+        state.data.entries = state.data.entries.filter(e=>e.id!==m.editId);
+        await saveData();
+        closeModal();
+      }
+    });
+  }
+}
+function closeModal(){ state.modal = null; render(); }
+
+/* ---- Annonces ---- */
+function adminAnnouncements(){
+  const d = state.data;
+  const list = [...d.announcements].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return `
+  <div class="page-head"><div><p class="page-title">Annonces</p><p class="page-sub">Informations visibles par tous les membres du laboratoire.</p></div>
+    <button class="btn btn-primary btn-sm" id="new-ann">+ Nouvelle annonce</button></div>
+  ${list.length===0 ? `<div class="card"><div class="empty-state">Aucune annonce publiée.</div></div>` : list.map(a=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div><p class="card-title">${esc(a.title)}</p><p class="sub-txt" style="margin-bottom:10px;">${esc(a.author)} · ${fmtDateTime(a.date)}</p></div>
+        <button class="btn btn-ghost btn-sm" data-del-ann="${a.id}">Supprimer</button>
+      </div>
+      <p style="font-size:14px;color:var(--foam-dim);line-height:1.6;white-space:pre-wrap;">${esc(a.content)}</p>
+    </div>`).join('')}`;
+}
+function bindAnnouncements(editable){
+  if(editable){
+    const newBtn = document.getElementById('new-ann');
+    if(newBtn) {
+      newBtn.addEventListener('click', ()=>{
+        const title = prompt("Titre de l'annonce :");
+        if(!title) return;
+        const content = prompt('Contenu :') || '';
+        state.data.announcements.push({id:uid('ann'), title, content, author: state.data.admin.name, date:new Date().toISOString()});
+        saveData().then(render);
+      });
+    }
+    document.querySelectorAll('[data-del-ann]').forEach(b=>b.addEventListener('click', async ()=>{
+      if(confirm('Supprimer cette annonce ?')){
+        state.data.announcements = state.data.announcements.filter(a=>a.id!==b.dataset.delAnn);
+        await saveData(); render();
+      }
+    }));
+  }
+}
+
+/* ---- Événements ---- */
+function adminEvents(){
+  const d = state.data;
+  const list = [...d.events].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  return `
+  <div class="page-head"><div><p class="page-title">Événements</p><p class="page-sub">Réunions, formations, journées spéciales du laboratoire.</p></div>
+    <button class="btn btn-primary btn-sm" id="new-ev">+ Nouvel événement</button></div>
+  ${list.length===0 ? `<div class="card"><div class="empty-state">Aucun événement programmé.</div></div>` : list.map(ev=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div>
+          <p class="card-title">${esc(ev.title)}</p>
+          <p class="sub-txt">${fmtDate(ev.date)}${ev.time?' · '+esc(ev.time):''}${ev.location?' · '+esc(ev.location):''}</p>
+          ${ev.description?`<p style="font-size:13.5px;color:var(--foam-dim);margin-top:8px;">${esc(ev.description)}</p>`:''}
+        </div>
+        <button class="btn btn-ghost btn-sm" data-del-ev="${ev.id}">Supprimer</button>
+      </div>
+    </div>`).join('')}`;
+}
+function bindEvents(editable){
+  if(editable){
+    const newBtn = document.getElementById('new-ev');
+    if(newBtn) {
+      newBtn.addEventListener('click', ()=>{
+        const title = prompt("Titre de l'événement :");
+        if(!title) return;
+        const date = prompt('Date (AAAA-MM-JJ) :');
+        if(!date) return;
+        const time = prompt('Heure (optionnel, ex. 09:00) :') || '';
+        const location = prompt('Lieu (optionnel) :') || '';
+        const description = prompt('Description (optionnel) :') || '';
+        state.data.events.push({id:uid('ev'), title, date, time, location, description});
+        saveData().then(render);
+      });
+    }
+    document.querySelectorAll('[data-del-ev]').forEach(b=>b.addEventListener('click', async ()=>{
+      if(confirm('Supprimer cet événement ?')){
+        state.data.events = state.data.events.filter(e=>e.id!==b.dataset.delEv);
+        await saveData(); render();
+      }
+    }));
+  }
+}
+
+/* ---- Paramètres admin ---- */
+function adminSettings(){
+  const d = state.data;
+  return `
+  <div class="page-head"><div><p class="page-title">Paramètres</p><p class="page-sub">Compte administrateur du laboratoire.</p></div></div>
+  <div class="card">
+    <p class="card-title">Informations du compte</p>
+    <p class="sub-txt" style="margin-bottom:16px;">Modifiez votre nom, e-mail ou mot de passe. Pour transférer le rôle d'administrateur à quelqu'un d'autre, changez simplement l'adresse e-mail et le mot de passe ci-dessous, puis communiquez les nouveaux identifiants à la personne concernée — vous serez déconnecté(e) et devrez vous reconnecter avec les nouveaux identifiants.</p>
+    <form id="settings-form">
+      <div class="field"><label>Nom</label><input type="text" id="set-name" value="${esc(d.admin.name)}" required></div>
+      <div class="field"><label>E-mail</label><input type="email" id="set-email" value="${esc(d.admin.email)}" required></div>
+      <div class="field"><label>Nouveau mot de passe (laisser vide pour ne pas changer)</label><input type="password" id="set-pass" minlength="4"></div>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </form>
+  </div>
+  <p class="fineprint">⚠️ Contrôle d'accès simple à usage interne au laboratoire — évitez d'y utiliser un mot de passe sensible utilisé ailleurs.</p>`;
+}
+function bindSettings(){
+  const form = document.getElementById('settings-form');
+  if(form) {
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const name = document.getElementById('set-name').value.trim();
+      const email = document.getElementById('set-email').value.trim().toLowerCase();
+      const pass = document.getElementById('set-pass').value;
+      const emailChanged = email !== state.data.admin.email.toLowerCase();
+      const passChanged = !!pass;
+      state.data.admin.name = name;
+      state.data.admin.email = email;
+      if(passChanged) state.data.admin.password = pass;
+      await saveData();
+      if(emailChanged || passChanged){
+        alert('Identifiants mis à jour. Veuillez vous reconnecter.');
+        state.session = null; await saveSession(null);
+        state.view='login'; render();
+      }else{
+        alert('Informations enregistrées.');
+        render();
+      }
+    });
+  }
+}
+
+/* ================= MEMBER TABS ================= */
+function bindMemberTab(){
+  const el = document.getElementById('main-content');
+  if(!el) return;
+  const tab = state.memberTab;
+  const me = state.data.members.find(x=>x.id===state.session.memberId);
+  if(tab==='mytasks') el.innerHTML = memberMyTasks(me);
+  if(tab==='planning'){ el.innerHTML = memberPlanning(); }
+  if(tab==='announcements') el.innerHTML = adminAnnouncements().replace('<button class="btn btn-primary btn-sm" id="new-ann">+ Nouvelle annonce</button>','');
+  if(tab==='events') el.innerHTML = adminEvents().replace('<button class="btn btn-primary btn-sm" id="new-ev">+ Nouvel événement</button>','');
+  if(tab==='profile'){ el.innerHTML = memberProfile(me); bindMemberProfile(me); }
+}
+function memberMyTasks(me){
+  const d = state.data;
+  const mine = d.entries.filter(e=>e.memberId===me.id);
+  return `
+  <div class="page-head"><div><p class="page-title">Mes tâches de la semaine</p><p class="page-sub">Vos créneaux planifiés, lundi à samedi, 8h–16h.</p></div></div>
+  ${DAYS.map(day=>{
+    const entries = mine.filter(e=>e.day===day).sort((a,b)=>a.startHour-b.startHour);
+    return `<div class="day-block"><div class="day-title">${day}</div>
+      <div class="card" style="padding:14px 18px;">
+        ${entries.length===0 ? `<div class="empty-state" style="padding:14px 0;">Aucune tâche planifiée ce jour.</div>` :
+        entries.map(e=>{
+          const tt = d.taskTypes.find(t=>t.id===e.taskTypeId);
+          return `<div class="list-row">
+            <div class="flex-mid">
+              <span class="dot" style="width:10px;height:10px;border-radius:99px;background:${tt?tt.color:'#E08A4E'};flex-shrink:0;"></span>
+              <div>
+                <div class="name-txt">${esc(tt?tt.name:'—')}${e.equipmentName?' · '+esc(e.equipmentName):''}</div>
+                ${e.note?`<div class="sub-txt">${esc(e.note)}</div>`:''}
+              </div>
+            </div>
+            <div class="sub-txt" style="font-family:var(--font-mono);">${e.startHour}h–${e.endHour}h</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+function memberPlanning(){
+  return `
+  <div class="page-head"><div><p class="page-title">Planning complet du laboratoire</p><p class="page-sub">Vue d'ensemble des créneaux de tous les membres (lecture seule).</p></div></div>
+  ${scheduleGrid(false)}
+  ${scheduleLegend()}`;
+}
+function memberProfile(me){
+  return `
+  <div class="page-head"><div><p class="page-title">Mon profil</p></div></div>
+  <div class="card">
+    <p class="card-title">${esc(me.name)}</p>
+    <p class="sub-txt" style="margin-bottom:20px;">${esc(me.email)}</p>
+    <form id="pass-form">
+      <div class="field"><label>Nouveau mot de passe</label><input type="password" id="pf-pass" minlength="4" required></div>
+      <div class="field"><label>Confirmer</label><input type="password" id="pf-pass2" minlength="4" required></div>
+      <button type="submit" class="btn btn-primary">Mettre à jour le mot de passe</button>
+    </form>
+  </div>`;
+}
+function bindMemberProfile(me){
+  const form = document.getElementById('pass-form');
+  if(form) {
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const p1 = document.getElementById('pf-pass').value;
+      const p2 = document.getElementById('pf-pass2').value;
+      if(p1 !== p2){ alert('Les mots de passe ne correspondent pas.'); return; }
+      me.password = p1;
+      await saveData();
+      alert('Mot de passe mis à jour.');
+      render();
+    });
+  }
+}
+
+/* ================= START ================= */
+init();
+</script>
+</body>
+</html>
