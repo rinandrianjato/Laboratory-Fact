@@ -37,7 +37,6 @@
   button{font-family:var(--font-body);cursor:pointer;}
   input,select,textarea{font-family:var(--font-body);}
 
-  /* ---------- utility ---------- */
   .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;}
   .center-screen::before{
     content:'';position:absolute;inset:0;
@@ -79,7 +78,6 @@
   .info-box{background:var(--success-dim);color:#CDEBD5;border:1px solid rgba(127,184,143,0.35);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;}
   .fineprint{font-family:var(--font-mono);font-size:10.5px;color:var(--foam-faint);text-align:center;margin-top:22px;line-height:1.6;}
 
-  /* Login role selection */
   .role-selector{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;}
   .role-btn{padding:16px;border:2px solid var(--line);border-radius:12px;background:var(--panel-2);color:var(--foam-dim);text-align:center;transition:all .2s;cursor:pointer;}
   .role-btn:hover{border-color:var(--foam-faint);background:var(--panel-3);}
@@ -88,7 +86,6 @@
   .role-btn .label{font-weight:600;font-size:14px;}
   .role-btn .desc{font-size:11px;color:var(--foam-faint);margin-top:4px;}
 
-  /* ---------- shell ---------- */
   .shell{display:flex;min-height:100vh;}
   .sidebar{width:242px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 14px;}
   .brand{padding:6px 10px 22px;border-bottom:1px solid var(--line);margin-bottom:16px;}
@@ -106,7 +103,6 @@
   .page-title{font-family:var(--font-display);font-size:26px;font-weight:600;margin:0 0 4px;}
   .page-sub{color:var(--foam-dim);font-size:13.5px;margin:0;}
 
-  /* ---------- cards / lists ---------- */
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px;}
   .card-title{font-family:var(--font-display);font-size:16px;font-weight:600;margin:0 0 4px;}
   .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
@@ -135,7 +131,6 @@
   .add-inline{display:flex;gap:8px;margin-top:14px;}
   .add-inline input{flex:1;}
 
-  /* ---------- schedule grid ---------- */
   .sched-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--line);}
   .sched-grid{display:grid;grid-template-columns:64px repeat(6,minmax(150px,1fr));gap:1px;min-width:1000px;}
   .sched-cell{background:var(--panel);padding:6px;min-height:64px;}
@@ -154,7 +149,6 @@
   .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--foam-dim);}
   .legend-dot{width:9px;height:9px;border-radius:99px;}
 
-  /* ---------- modal ---------- */
   .modal-backdrop{position:fixed;inset:0;background:rgba(6,17,18,0.65);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
   .modal-box{background:var(--panel);border:1px solid var(--line-strong);border-radius:16px;padding:28px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;}
   .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
@@ -163,7 +157,6 @@
   .modal-actions{display:flex;gap:10px;margin-top:20px;}
   .modal-actions .btn{flex:1;}
 
-  .tabs-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;}
   .day-block{margin-bottom:18px;}
   .day-title{font-family:var(--font-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.08em;color:var(--coral);margin-bottom:8px;}
 
@@ -184,11 +177,11 @@
 <div id="app"></div>
 <script>
 /* ============================================================
-   LCO-SM · Outil de gestion des tâches du laboratoire
-   Version avec sélection Admin/Membre à la connexion
+   LCO-SM · Gestion du laboratoire - VERSION RÉINITIALISÉE
+   🔒 Admin unique - Supprime toutes les données existantes
    ============================================================ */
 
-// --- Implémentation de l'API window.storage avec localStorage ---
+// --- Implémentation de l'API window.storage ---
 window.storage = {
   get: function(key, shared) {
     return new Promise((resolve) => {
@@ -224,6 +217,7 @@ window.storage = {
 
 const STORAGE_KEY = 'lco-sm-lab-data';
 const SESSION_KEY = 'lco-sm-session';
+const RESET_KEY = 'lco-sm-reset-done';
 
 const DAYS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
 const HOURS = [8,9,10,11,12,13,14,15];
@@ -238,7 +232,7 @@ let state = {
   memberTab: 'mytasks',
   modal: null,
   errorMsg: '',
-  loginRole: null, // 'admin' ou 'member'
+  loginRole: null,
 };
 
 function uid(prefix){
@@ -266,45 +260,15 @@ function fmtDateTime(iso){
   }catch(e){ return iso; }
 }
 
-/* ---------------- storage ---------------- */
-async function loadData(){
-  try{
-    const res = await window.storage.get(STORAGE_KEY, true);
-    if(!res) return null;
-    return JSON.parse(res.value);
-  }catch(e){
-    return null;
-  }
-}
-async function saveData(){
-  try{
-    const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state.data), true);
-    if(!res){ console.error('Échec de sauvegarde (résultat nul)'); }
-  }catch(e){
-    console.error('Erreur de sauvegarde', e);
-    alert("Une erreur est survenue lors de l'enregistrement.");
-  }
-}
-async function loadSession(){
-  try{
-    const res = await window.storage.get(SESSION_KEY, false);
-    if(!res) return null;
-    return JSON.parse(res.value);
-  }catch(e){ return null; }
-}
-async function saveSession(session){
-  try{
-    if(session){
-      await window.storage.set(SESSION_KEY, JSON.stringify(session), false);
-    }else{
-      await window.storage.delete(SESSION_KEY, false);
-    }
-  }catch(e){ /* ignore */ }
-}
-
 function defaultData(admin){
   return {
-    admin: admin,
+    admin: {
+      name: admin.name,
+      email: admin.email,
+      password: admin.password,
+      isUnique: true,
+      createdAt: new Date().toISOString()
+    },
     members: [],
     taskTypes: [
       {id:'analyses', name:'Analyses', color:COLOR_PALETTE[0]},
@@ -321,17 +285,54 @@ function defaultData(admin){
     announcements: [],
     events: [],
     createdAt: new Date().toISOString(),
+    resetVersion: '2.0'
   };
 }
 
-/* ---------------- init ---------------- */
+/* ---------------- RÉINITIALISATION FORCÉE ---------------- */
+async function forceReset(){
+  try {
+    // Supprimer toutes les données existantes
+    await window.storage.delete(STORAGE_KEY, true);
+    await window.storage.delete(SESSION_KEY, false);
+    await window.storage.set(RESET_KEY, 'done', false);
+    
+    // Vider le localStorage localement
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.setItem(RESET_KEY, 'done');
+    
+    console.log('✅ Réinitialisation complète effectuée');
+  } catch(e) {
+    console.error('Erreur lors de la réinitialisation:', e);
+  }
+}
+
+/* ---------------- INIT ---------------- */
 async function init(){
+  // 🔒 Vérifier si c'est la première ouverture après reset
+  const resetDone = await window.storage.get(RESET_KEY, false);
+  
+  // Si c'est la première ouverture OU si aucune donnée n'existe
+  const dataExists = await window.storage.get(STORAGE_KEY, true);
+  
+  if (!dataExists || !resetDone) {
+    // Première ouverture ou données corrompues
+    state.view = 'setup';
+    state.errorMsg = '';
+    render();
+    return;
+  }
+  
+  // Charger les données
   state.data = await loadData();
   if(!state.data){
     state.view = 'setup';
     render();
     return;
   }
+  
+  // Vérifier la session
   const session = await loadSession();
   if(session && session.role === 'admin'){
     state.session = session;
@@ -360,11 +361,55 @@ async function init(){
       return;
     }
   }
+  
   state.view = 'login';
   render();
 }
 
-/* ---------------- render dispatcher ---------------- */
+/* ---------------- STORAGE FUNCTIONS ---------------- */
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    if(!res) return null;
+    const data = JSON.parse(res.value);
+    // Vérifier la version
+    if(data.resetVersion !== '2.0') {
+      // Données d'une version ancienne, forcer la réinitialisation
+      await forceReset();
+      return null;
+    }
+    return data;
+  }catch(e){
+    return null;
+  }
+}
+async function saveData(){
+  try{
+    const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state.data), true);
+    if(!res){ console.error('Échec de sauvegarde'); }
+  }catch(e){
+    console.error('Erreur de sauvegarde', e);
+    alert("Une erreur est survenue lors de l'enregistrement.");
+  }
+}
+async function loadSession(){
+  try{
+    const res = await window.storage.get(SESSION_KEY, false);
+    if(!res) return null;
+    return JSON.parse(res.value);
+  }catch(e){ return null; }
+}
+async function saveSession(session){
+  try{
+    if(session){
+      await window.storage.set(SESSION_KEY, JSON.stringify(session), false);
+    }else{
+      await window.storage.delete(SESSION_KEY, false);
+    }
+  }catch(e){ /* ignore */ }
+}
+
+/* ---------------- RENDER ---------------- */
 function render(){
   const app = document.getElementById('app');
   if(state.view==='loading'){ app.innerHTML = screenLoading(); return; }
@@ -387,21 +432,26 @@ function screenSetup(){
   return `
   <div class="center-screen">
     <div class="auth-card">
-      <p class="eyebrow">Premier lancement</p>
-      <h1 class="display-title">Configurer le compte administrateur</h1>
-      <p class="sub">Aucune donnée n'existe encore. La première personne à ouvrir cet outil devient l'administrateur unique.</p>
+      <p class="eyebrow">🔒 Nouvelle installation</p>
+      <h1 class="display-title">Configurer l'administrateur unique</h1>
+      <p class="sub">Création du compte administrateur. Cet utilisateur sera le seul à avoir accès à l'interface d'administration.</p>
       ${state.errorMsg ? `<div class="error-box">${esc(state.errorMsg)}</div>` : ''}
+      <div class="info-box" style="margin-bottom:16px;">
+        ⚠️ <strong>Attention :</strong> Une seule personne peut être administrateur. 
+        Cette personne pourra transférer son rôle plus tard.
+      </div>
       <form id="setup-form">
         <div class="field"><label>Votre nom</label><input type="text" id="s-name" placeholder="ex. Rina Ratsimbazafy" required></div>
         <div class="field"><label>Adresse e-mail (identifiant admin)</label><input type="email" id="s-email" placeholder="admin@lco-sm.mg" required></div>
         <div class="field"><label>Mot de passe</label><input type="password" id="s-pass" minlength="4" required></div>
         <div class="field"><label>Confirmer le mot de passe</label><input type="password" id="s-pass2" minlength="4" required></div>
-        <button type="submit" class="btn btn-primary">Créer le compte administrateur</button>
+        <button type="submit" class="btn btn-admin">🔑 Créer le compte administrateur</button>
       </form>
       <p class="fineprint">⚠️ Cet administrateur sera unique. Il pourra transférer son rôle à un autre membre plus tard.</p>
     </div>
   </div>`;
 }
+
 function bindSetup(){
   document.getElementById('setup-form').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -410,10 +460,16 @@ function bindSetup(){
     const pass = document.getElementById('s-pass').value;
     const pass2 = document.getElementById('s-pass2').value;
     if(pass !== pass2){ state.errorMsg = 'Les mots de passe ne correspondent pas.'; render(); return; }
+    if(name.length < 2){ state.errorMsg = 'Le nom est trop court.'; render(); return; }
+    if(email.length < 3){ state.errorMsg = 'E-mail invalide.'; render(); return; }
+    
+    // Forcer la réinitialisation avant de créer les nouvelles données
+    await forceReset();
+    
     state.data = defaultData({name, email, password: pass});
-    // S'assurer que l'admin est marqué comme unique
-    state.data.admin.isUnique = true;
     await saveData();
+    await window.storage.set(RESET_KEY, 'done', false);
+    
     state.session = {role:'admin'};
     await saveSession(state.session);
     state.errorMsg = '';
@@ -423,7 +479,7 @@ function bindSetup(){
   });
 }
 
-/* ================= LOGIN avec sélection de rôle ================= */
+/* ================= LOGIN ================= */
 function screenLogin(){
   return `
   <div class="center-screen">
@@ -433,7 +489,6 @@ function screenLogin(){
       <p class="sub">Choisissez votre rôle puis entrez vos identifiants.</p>
       ${state.errorMsg ? `<div class="error-box">${esc(state.errorMsg)}</div>` : ''}
       
-      <!-- Sélection du rôle -->
       <div class="role-selector">
         <div class="role-btn ${state.loginRole === 'admin' ? 'active' : ''}" data-role="admin">
           <span class="icon">🔑</span>
@@ -459,13 +514,12 @@ function screenLogin(){
         Pas encore de profil ?
         <button class="link-btn" id="go-register">Créer un profil</button>
       </div>
-      <p class="fineprint">⚠️ L'administrateur est unique. Pour devenir admin, contactez l'admin actuel.</p>
+      <p class="fineprint">🔒 L'administrateur est unique. Pour devenir admin, contactez l'admin actuel.</p>
     </div>
   </div>`;
 }
 
 function bindLogin(){
-  // Sélection du rôle
   document.querySelectorAll('.role-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.loginRole = btn.dataset.role;
@@ -473,16 +527,13 @@ function bindLogin(){
     });
   });
   
-  // Soumission du formulaire
   document.getElementById('login-form').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const email = document.getElementById('l-email').value.trim().toLowerCase();
     const pass = document.getElementById('l-pass').value;
     const d = state.data;
     
-    // Si le rôle admin est sélectionné
     if(state.loginRole === 'admin'){
-      // Vérifier si l'admin existe et est unique
       if(d.admin && d.admin.email.toLowerCase() === email && d.admin.password === pass){
         state.session = {role:'admin'};
         await saveSession(state.session);
@@ -492,13 +543,12 @@ function bindLogin(){
         render();
         return;
       } else {
-        state.errorMsg = 'Identifiants administrateur incorrects.';
+        state.errorMsg = '❌ Identifiants administrateur incorrects.';
         render();
         return;
       }
     }
     
-    // Si le rôle membre est sélectionné
     if(state.loginRole === 'member'){
       const m = d.members.find(x => x.email.toLowerCase() === email && x.password === pass);
       if(m){
@@ -526,15 +576,14 @@ function bindLogin(){
           return;
         }
       } else {
-        state.errorMsg = 'Identifiants membres incorrects.';
+        state.errorMsg = '❌ Identifiants membres incorrects.';
         render();
         return;
       }
     }
     
-    // Si aucun rôle sélectionné
     if(!state.loginRole){
-      state.errorMsg = 'Veuillez sélectionner un rôle (Admin ou Membre).';
+      state.errorMsg = '⚠️ Veuillez sélectionner un rôle (Admin ou Membre).';
       render();
       return;
     }
@@ -554,7 +603,7 @@ function screenRegister(){
     <div class="auth-card">
       <p class="eyebrow">Nouveau profil</p>
       <h1 class="display-title">Créer votre profil</h1>
-      <p class="sub">Votre profil sera visible par l'administrateur pour validation. Vous pourrez suivre vos tâches dès qu'il sera approuvé.</p>
+      <p class="sub">Votre profil sera visible par l'administrateur pour validation.</p>
       ${state.errorMsg ? `<div class="error-box">${esc(state.errorMsg)}</div>` : ''}
       <form id="register-form">
         <div class="field"><label>Nom complet</label><input type="text" id="r-name" required></div>
@@ -580,6 +629,11 @@ function bindRegister(){
     const pass2 = document.getElementById('r-pass2').value;
     if(pass !== pass2){ state.errorMsg='Les mots de passe ne correspondent pas.'; render(); return; }
     const d = state.data;
+    if(!d || !d.admin){ 
+      state.errorMsg='Configuration du laboratoire non trouvée. Contactez l\'administrateur.';
+      render(); 
+      return;
+    }
     if(d.admin.email.toLowerCase()===email || d.members.some(m=>m.email.toLowerCase()===email)){
       state.errorMsg = 'Cette adresse e-mail est déjà utilisée.'; render(); return;
     }
@@ -602,13 +656,13 @@ function bindRegister(){
 
 /* ================= PENDING / REJECTED ================= */
 function screenPending(){
-  const m = state.data.members.find(x=>x.id===state.session.memberId);
+  const m = state.data ? state.data.members.find(x=>x.id===state.session.memberId) : null;
   return `
   <div class="center-screen">
     <div class="auth-card" style="text-align:center;">
-      <p class="eyebrow">En attente</p>
+      <p class="eyebrow">⏳ En attente</p>
       <h1 class="display-title">Demande envoyée</h1>
-      <p class="sub">Bonjour ${esc(m?m.name:'')}, votre profil est en attente de validation par l'administrateur.</p>
+      <p class="sub">Bonjour ${esc(m?m.name:'')}, votre profil est en attente de validation par l'administrateur du laboratoire.</p>
       <div style="display:flex;gap:10px;">
         <button class="btn btn-ghost" id="p-refresh" style="flex:1;">Actualiser</button>
         <button class="btn btn-danger" id="p-logout" style="flex:1;">Se déconnecter</button>
@@ -620,7 +674,7 @@ function screenRejected(){
   return `
   <div class="center-screen">
     <div class="auth-card" style="text-align:center;">
-      <p class="eyebrow">Demande non retenue</p>
+      <p class="eyebrow">❌ Demande non retenue</p>
       <h1 class="display-title">Profil non validé</h1>
       <p class="sub">Votre demande d'accès n'a pas été approuvée par l'administrateur.</p>
       <button class="btn btn-danger" id="p-logout" style="width:100%;">Se déconnecter</button>
@@ -633,6 +687,7 @@ function bindPending(){
   const rf = document.getElementById('p-refresh');
   if(rf) rf.addEventListener('click', async ()=>{
     state.data = await loadData();
+    if(!state.data){ state.view='login'; render(); return; }
     const m = state.data.members.find(x=>x.id===state.session.memberId);
     if(m && m.status==='active'){ state.view='member'; state.memberTab='mytasks'; }
     else if(m && m.status==='rejected'){ state.view='rejected'; }
@@ -643,6 +698,12 @@ function bindPending(){
 /* ================= SHELL: ADMIN ================= */
 function shellAdmin(){
   const d = state.data;
+  if(!d || !d.admin) {
+    // Si les données sont corrompues, retourner à la configuration
+    state.view = 'setup';
+    render();
+    return '';
+  }
   const pendingCount = d.members.filter(m=>m.status==='pending').length;
   const tabs = [
     ['overview','Vue d\'ensemble'],
@@ -667,7 +728,7 @@ function shellAdmin(){
           ${t[2] ? `<span class="nav-badge">${t[2]}</span>` : ''}
         </button>`).join('')}
       <div class="sidebar-foot">
-        <div class="who"><b>${esc(d.admin.name)}</b>${esc(d.admin.email)}<br><span class="pill pill-admin" style="font-size:9px;">Admin unique</span></div>
+        <div class="who"><b>${esc(d.admin.name)}</b>${esc(d.admin.email)}<br><span class="pill pill-admin" style="font-size:9px;">🔒 Admin unique</span></div>
         <button class="btn btn-ghost btn-sm" id="logout-btn" style="width:100%;">Se déconnecter</button>
       </div>
     </div>
@@ -677,7 +738,7 @@ function shellAdmin(){
 
 /* ================= SHELL: MEMBER ================= */
 function shellMember(){
-  const m = state.data.members.find(x=>x.id===state.session.memberId);
+  const m = state.data ? state.data.members.find(x=>x.id===state.session.memberId) : null;
   const tabs = [
     ['mytasks','Mes tâches'],
     ['planning','Planning complet'],
@@ -743,6 +804,7 @@ function bindAdminTab(){
 
 function adminOverview(){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   const active = d.members.filter(m=>m.status==='active');
   const pending = d.members.filter(m=>m.status==='pending');
   const now = new Date();
@@ -755,7 +817,7 @@ function adminOverview(){
   <div class="stat-grid">
     <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">Membres actifs</div></div>
     <div class="stat-card"><div class="stat-num">${pending.length}</div><div class="stat-label">Demandes en attente</div></div>
-    <div class="stat-card"><div class="stat-num">${d.entries.length}</div><div class="stat-label">Créneaux planifiés / semaine</div></div>
+    <div class="stat-card"><div class="stat-num">${d.entries.length}</div><div class="stat-label">Créneaux planifiés</div></div>
     <div class="stat-card"><div class="stat-num">${d.announcements.length}</div><div class="stat-label">Annonces publiées</div></div>
   </div>
   <div class="card">
@@ -763,7 +825,7 @@ function adminOverview(){
     ${nextEvent ? `
       <div class="list-row" style="border:none;padding-top:8px;">
         <div><div class="name-txt">${esc(nextEvent.title)}</div><div class="sub-txt">${fmtDate(nextEvent.date)}${nextEvent.time?' · '+esc(nextEvent.time):''}${nextEvent.location?' · '+esc(nextEvent.location):''}</div></div>
-      </div>` : `<div class="empty-state">Aucun événement programmé pour le moment.</div>`}
+      </div>` : `<div class="empty-state">Aucun événement programmé.</div>`}
   </div>
   <div class="card">
     <p class="card-title">Demandes de profil en attente</p>
@@ -782,13 +844,14 @@ function adminOverview(){
 /* ---- Membres ---- */
 function adminMembers(){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   const pending = d.members.filter(m=>m.status==='pending');
   const active = d.members.filter(m=>m.status==='active');
   const rejected = d.members.filter(m=>m.status==='rejected');
   return `
   <div class="page-head"><div><p class="page-title">Membres</p><p class="page-sub">Validez les nouvelles demandes, gérez les profils, ou transférez le rôle d'administrateur.</p></div></div>
   <div class="card">
-    <p class="card-title">Demandes en attente (${pending.length})</p>
+    <p class="card-title">📋 Demandes en attente (${pending.length})</p>
     ${pending.length===0 ? `<div class="empty-state">Aucune demande en attente.</div>` : pending.map(m=>`
       <div class="list-row">
         <div class="flex-mid">
@@ -796,13 +859,13 @@ function adminMembers(){
           <div><div class="name-txt">${esc(m.name)}</div><div class="sub-txt">${esc(m.email)} · demandé le ${fmtDate(m.createdAt)}</div></div>
         </div>
         <div class="btn-row">
-          <button class="btn btn-success btn-sm" data-approve="${m.id}">Approuver</button>
-          <button class="btn btn-danger btn-sm" data-reject="${m.id}">Refuser</button>
+          <button class="btn btn-success btn-sm" data-approve="${m.id}">✅ Approuver</button>
+          <button class="btn btn-danger btn-sm" data-reject="${m.id}">❌ Refuser</button>
         </div>
       </div>`).join('')}
   </div>
   <div class="card">
-    <p class="card-title">Membres actifs (${active.length})</p>
+    <p class="card-title">✅ Membres actifs (${active.length})</p>
     ${active.length===0 ? `<div class="empty-state">Aucun membre actif pour le moment.</div>` : active.map(m=>`
       <div class="list-row">
         <div class="flex-mid">
@@ -812,13 +875,13 @@ function adminMembers(){
         <div class="btn-row">
           <span class="pill pill-active">Actif</span>
           <button class="btn btn-ghost btn-sm" data-transfer-admin="${m.id}" style="color:var(--coral);border-color:var(--coral);">⬆️ Nommer admin</button>
-          <button class="btn btn-danger btn-sm" data-remove="${m.id}">Retirer</button>
+          <button class="btn btn-danger btn-sm" data-remove="${m.id}">🗑️ Retirer</button>
         </div>
       </div>`).join('')}
   </div>
   ${rejected.length ? `
   <div class="card">
-    <p class="card-title">Demandes refusées (${rejected.length})</p>
+    <p class="card-title">❌ Demandes refusées (${rejected.length})</p>
     ${rejected.map(m=>`
       <div class="list-row">
         <div class="flex-mid">
@@ -827,7 +890,7 @@ function adminMembers(){
         </div>
         <div class="btn-row">
           <span class="pill pill-rejected">Refusé</span>
-          <button class="btn btn-ghost btn-sm" data-remove="${m.id}">Supprimer</button>
+          <button class="btn btn-ghost btn-sm" data-remove="${m.id}">🗑️ Supprimer</button>
         </div>
       </div>`).join('')}
   </div>` : ''}`;
@@ -851,17 +914,14 @@ function bindAdminMembers(){
     }
   }));
   
-  // Transfert du rôle admin
   document.querySelectorAll('[data-transfer-admin]').forEach(b=>b.addEventListener('click', async ()=>{
     const m = state.data.members.find(x=>x.id===b.dataset.transferAdmin);
     if(!m) return;
     if(!confirm(`⚠️ ATTENTION : Vous allez transférer le rôle d'administrateur à ${m.name}.\n\nVous perdrez vos droits d'administrateur et deviendrez un membre normal.\n\nContinuer ?`)) return;
     if(!confirm(`Confirmation définitive : Êtes-vous sûr de vouloir transférer le rôle admin à ${m.name} ?`)) return;
     
-    // Sauvegarder l'ancien admin
     const oldAdmin = { ...state.data.admin };
     
-    // Créer un membre à partir de l'ancien admin s'il n'existe pas déjà
     let oldAdminAsMember = state.data.members.find(x => x.email === oldAdmin.email);
     if(!oldAdminAsMember){
       oldAdminAsMember = {
@@ -875,20 +935,18 @@ function bindAdminMembers(){
       state.data.members.push(oldAdminAsMember);
     }
     
-    // Transférer le rôle admin au nouveau
     state.data.admin = {
       name: m.name,
       email: m.email,
       password: m.password,
-      isUnique: true
+      isUnique: true,
+      createdAt: new Date().toISOString()
     };
     
-    // Retirer l'ancien admin des membres s'il y est (pour éviter les doublons)
     state.data.members = state.data.members.filter(x => x.id !== m.id);
     
     await saveData();
     
-    // Déconnecter l'ancien admin
     state.session = null;
     state.loginRole = null;
     await saveSession(null);
@@ -902,8 +960,9 @@ function bindAdminMembers(){
 /* ---- Types de tâches ---- */
 function adminTaskTypes(){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   return `
-  <div class="page-head"><div><p class="page-title">Types de tâches</p><p class="page-sub">La liste utilisée pour planifier les créneaux de chacun.</p></div></div>
+  <div class="page-head"><div><p class="page-title">Types de tâches</p><p class="page-sub">La liste utilisée pour planifier les créneaux.</p></div></div>
   <div class="card">
     <div class="chip-list">
       ${d.taskTypes.map(t=>`
@@ -911,7 +970,7 @@ function adminTaskTypes(){
       `).join('')}
     </div>
     <div class="add-inline">
-      <input type="text" id="new-tt" placeholder="Nouveau type de tâche, ex. Formation stagiaire">
+      <input type="text" id="new-tt" placeholder="Nouveau type de tâche">
       <button class="btn btn-primary btn-sm" id="add-tt">Ajouter</button>
     </div>
   </div>`;
@@ -929,7 +988,7 @@ function bindTaskTypes(){
   }
   document.querySelectorAll('[data-del-tt]').forEach(b=>b.addEventListener('click', async ()=>{
     const inUse = state.data.entries.some(e=>e.taskTypeId===b.dataset.delTt);
-    if(inUse && !confirm('Ce type de tâche est utilisé dans le planning. Le supprimer retirera aussi ces créneaux. Continuer ?')) return;
+    if(inUse && !confirm('Ce type est utilisé dans le planning. Le supprimer retirera aussi ces créneaux. Continuer ?')) return;
     state.data.taskTypes = state.data.taskTypes.filter(t=>t.id!==b.dataset.delTt);
     state.data.entries = state.data.entries.filter(e=>e.taskTypeId!==b.dataset.delTt);
     await saveData(); render();
@@ -939,8 +998,9 @@ function bindTaskTypes(){
 /* ---- Matériel ---- */
 function adminEquipment(){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   return `
-  <div class="page-head"><div><p class="page-title">Matériel du laboratoire</p><p class="page-sub">Liste des équipements réservables dans le planning.</p></div></div>
+  <div class="page-head"><div><p class="page-title">Matériel</p></div></div>
   <div class="card">
     <div class="chip-list">
       ${d.equipment.map((eq,i)=>`
@@ -948,7 +1008,7 @@ function adminEquipment(){
       `).join('')}
     </div>
     <div class="add-inline">
-      <input type="text" id="new-eq" placeholder="Nouvel équipement, ex. Lyophilisateur">
+      <input type="text" id="new-eq" placeholder="Nouvel équipement">
       <button class="btn btn-primary btn-sm" id="add-eq">Ajouter</button>
     </div>
   </div>`;
@@ -973,6 +1033,7 @@ function bindEquipment(){
 /* ---- Planning ---- */
 function scheduleGrid(editable){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   let html = `<div class="sched-wrap"><div class="sched-grid">`;
   html += `<div class="sched-head"></div>`;
   DAYS.forEach(day => html += `<div class="sched-head">${day}</div>`);
@@ -999,11 +1060,12 @@ function scheduleGrid(editable){
 }
 function scheduleLegend(){
   const d = state.data;
+  if(!d) return '';
   return `<div class="legend">${d.taskTypes.map(t=>`<div class="legend-item"><span class="legend-dot" style="background:${t.color}"></span>${esc(t.name)}</div>`).join('')}</div>`;
 }
 function adminPlanning(){
   return `
-  <div class="page-head"><div><p class="page-title">Planning hebdomadaire</p><p class="page-sub">Lundi à samedi, 8h–16h. Cliquez sur une case vide pour ajouter un créneau.</p></div></div>
+  <div class="page-head"><div><p class="page-title">Planning hebdomadaire</p><p class="page-sub">Lundi à samedi, 8h–16h.</p></div></div>
   ${scheduleGrid(true)}
   ${scheduleLegend()}`;
 }
@@ -1022,6 +1084,7 @@ function bindPlanning(editable){
 
 function openEntryModal({day, startHour, editId}={}){
   const d = state.data;
+  if(!d) { alert("Données non disponibles"); return; }
   const active = d.members.filter(m=>m.status==='active');
   if(active.length===0){ alert("Aucun membre actif pour l'instant."); return; }
   let entry = editId ? d.entries.find(e=>e.id===editId) : null;
@@ -1048,6 +1111,7 @@ function renderModal(){
   
   const m = state.modal;
   const d = state.data;
+  if(!d) { state.modal = null; render(); return; }
   const active = d.members.filter(x=>x.status==='active');
   const showEquipment = m.taskTypeId === 'materiel' || (d.taskTypes.find(t=>t.id===m.taskTypeId)||{}).name==='Utilisation matériel labo';
   const box = document.createElement('div');
@@ -1131,6 +1195,7 @@ function closeModal(){ state.modal = null; render(); }
 /* ---- Annonces ---- */
 function adminAnnouncements(){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   const list = [...d.announcements].sort((a,b)=>new Date(b.date)-new Date(a.date));
   return `
   <div class="page-head"><div><p class="page-title">Annonces</p><p class="page-sub">Visibles par tous les membres.</p></div>
@@ -1165,9 +1230,10 @@ function bindAnnouncements(editable){
 /* ---- Événements ---- */
 function adminEvents(){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   const list = [...d.events].sort((a,b)=>new Date(a.date)-new Date(b.date));
   return `
-  <div class="page-head"><div><p class="page-title">Événements</p><p class="page-sub">Réunions, formations, journées spéciales.</p></div>
+  <div class="page-head"><div><p class="page-title">Événements</p></div>
     <button class="btn btn-primary btn-sm" id="new-ev">+ Nouvel événement</button></div>
   ${list.length===0 ? `<div class="card"><div class="empty-state">Aucun événement programmé.</div></div>` : list.map(ev=>`
     <div class="card">
@@ -1206,11 +1272,12 @@ function bindEvents(editable){
 /* ---- Paramètres ---- */
 function adminSettings(){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   return `
-  <div class="page-head"><div><p class="page-title">Paramètres</p><p class="page-sub">Gestion du compte administrateur.</p></div></div>
+  <div class="page-head"><div><p class="page-title">Paramètres</p></div></div>
   <div class="card">
     <p class="card-title">Informations du compte admin</p>
-    <p class="sub-txt" style="margin-bottom:16px;">Modifiez vos identifiants ou transférez le rôle administrateur à un autre membre (dans l'onglet Membres).</p>
+    <p class="sub-txt" style="margin-bottom:16px;">Modifiez vos identifiants.</p>
     <form id="settings-form">
       <div class="field"><label>Nom</label><input type="text" id="set-name" value="${esc(d.admin.name)}" required></div>
       <div class="field"><label>E-mail</label><input type="email" id="set-email" value="${esc(d.admin.email)}" required></div>
@@ -1254,7 +1321,9 @@ function bindMemberTab(){
   const el = document.getElementById('main-content');
   if(!el) return;
   const tab = state.memberTab;
-  const me = state.data.members.find(x=>x.id===state.session.memberId);
+  const d = state.data;
+  if(!d) { el.innerHTML = '<div class="empty-state">Données non disponibles</div>'; return; }
+  const me = d.members.find(x=>x.id===state.session.memberId);
   if(tab==='mytasks') el.innerHTML = memberMyTasks(me);
   if(tab==='planning'){ el.innerHTML = memberPlanning(); }
   if(tab==='announcements') el.innerHTML = adminAnnouncements().replace('<button class="btn btn-primary btn-sm" id="new-ann">+ Nouvelle annonce</button>','');
@@ -1263,6 +1332,7 @@ function bindMemberTab(){
 }
 function memberMyTasks(me){
   const d = state.data;
+  if(!d) return '<div class="empty-state">Données non disponibles</div>';
   const mine = d.entries.filter(e=>e.memberId===me.id);
   return `
   <div class="page-head"><div><p class="page-title">Mes tâches de la semaine</p></div></div>
